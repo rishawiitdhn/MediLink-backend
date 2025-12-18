@@ -105,6 +105,7 @@ module.exports.getPharmaciesByHospitalId = async (req, res) => {
       return res.status(404).json({ message: "Hospital not found!" });
     }
     const pharmacies = hospital.pharmacies;
+    // console.log(pharmacies.length)
     if (pharmacies.length === 0) {
       return res
         .status(404)
