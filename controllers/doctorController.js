@@ -45,25 +45,15 @@ module.exports.getAllVerifiedDoctors = async (req, res) => {
 module.exports.getAllAppointments = async (req, res) => {
   const { doctorId } = req.params;
   try {
-    const appts = await Appointment.find({doctor: doctorId}).populate("patient");
-    if (appts.length===0)
+    const appointments = await Appointment.find({doctor: doctorId}).populate("patient");
+    if (!appointments)
       return res.status(404).json({ message: "Doctor not found" });
 
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-
-    const endOfToday = new Date();
-    endOfToday.setHours(23, 59, 59, 999);
-
-    const appointments = await Appointment.find({
-      doctor: doctorId,
-      date: {
-        $gte: startOfToday,
-        $lte: endOfToday
-      }
-    }).populate("patient");
-
-    res.json(appointments);
+    let todayDate = new Date();
+    
+    const todayAppointments = appointments.filter((appt) => todayDate.toLocaleDateString("en-CA") === appt.date.toLocaleDateString("en-CA"));
+    res.json(todayAppointments);
+    console.log(todayAppointments)
   } catch(err) {
     res.status(500).json({ message: "Server Error" });
     console.error("Error during fetching doctor appointments: ", err);
