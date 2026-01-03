@@ -21,6 +21,7 @@ module.exports.bookAppointment = async (req, res) => {
       patient: patientId,
       doctor: doctorId,
       date,
+      isDone: false,
     });
 
     let emailMessage =
@@ -38,15 +39,27 @@ module.exports.bookAppointment = async (req, res) => {
 
       emailMessage =
         "Your appointment got cancelled successfully. Thankyou for choosing us:)";
+      await sendEmail({
+        to: patient.email,
+        subject: "Appointment Status Update",
+        html: emailMessage,
+        hospitalName: hospital.name,
+      });
       return res.json({ type: "info", message: "Changes updated!" });
     }
 
     const todayDate = new Date();
-    if (date < todayDate.toISOString().split("T")[0]) {
+    if (
+      new Date(date).toLocaleDateString("en-CA").split("T")[0] <
+      todayDate.toLocaleDateString("en-CA").split("T")[0]
+    ) {
       return res.json({ type: "info", message: "Try upcoming dates!!" });
     }
     const todayAppointments = doctor.appointments.filter((appt) => {
-      return appt.date.toDateString() === new Date(date).toDateString();
+      return (
+        appt.date.toLocaleDateString("en-CA").split("T")[0] ===
+        new Date(date).toLocaleDateString("en-CA").split("T")[0]
+      );
     });
 
     //checking the maximum limit of appointment per day!!
