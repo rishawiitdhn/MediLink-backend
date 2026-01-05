@@ -39,62 +39,66 @@ module.exports.bookAppointment = async (req, res) => {
 
       emailMessage =
         "Your appointment got cancelled successfully. Thankyou for choosing us:)";
+
+      res.json({ type: "info", message: "Changes updated!" });
       await sendEmail({
         to: patient.email,
         subject: "Appointment Status Update",
         html: emailMessage,
         hospitalName: hospital.name,
       });
-      return res.json({ type: "info", message: "Changes updated!" });
-    }
+    } else {
+      const todayDate = new Date();
+      if (
+        new Date(date).toLocaleDateString("en-CA").split("T")[0] <
+        todayDate.toLocaleDateString("en-CA").split("T")[0]
+      ) {
+        return res.json({ type: "info", message: "Try upcoming dates!!" });
+      }
+      const todayAppointments = doctor.appointments.filter((appt) => {
+        return (
+          appt.date.toLocaleDateString("en-CA").split("T")[0] ===
+          new Date(date).toLocaleDateString("en-CA").split("T")[0]
+        );
+      });
 
-    const todayDate = new Date();
-    if (
-      new Date(date).toLocaleDateString("en-CA").split("T")[0] <
-      todayDate.toLocaleDateString("en-CA").split("T")[0]
-    ) {
-      return res.json({ type: "info", message: "Try upcoming dates!!" });
-    }
-    const todayAppointments = doctor.appointments.filter((appt) => {
-      return (
-        appt.date.toLocaleDateString("en-CA").split("T")[0] ===
-        new Date(date).toLocaleDateString("en-CA").split("T")[0]
-      );
-    });
+      //checking the maximum limit of appointment per day!!
+      if (todayAppointments.length >= 50) {
+        return res.json({
+          type: "info",
+          message:
+            "The doctor’s appointment quota for today has been fully utilized. Please select some other date.",
+        });
+      }
 
-    //checking the maximum limit of appointment per day!!
-    if (todayAppointments.length >= 50) {
-      return res.json({
-        type: "info",
-        message:
-          "The doctor’s appointment quota for today has been fully utilized. Please select some other date.",
+      const newAppointment = new Appointment({
+        patient: patientId,
+        doctor: doctorId,
+        hospital: hospitalId,
+        date: new Date(date),
+      });
+
+      // console.log(date);
+      // console.log(todayDate.toISOString().split("T")[0]);
+      const result = await newAppointment.save();
+
+      //saving appointments into doctor and patients:
+      doctor.appointments.push(result._id);
+      patient.appointments.push(result._id);
+      await patient.save();
+      await doctor.save();
+
+      res.json({
+        type: "success",
+        message: "Appointment booked successfully!",
+      });
+      await sendEmail({
+        to: patient.email,
+        subject: "Appointment Status Update",
+        html: emailMessage,
+        hospitalName: hospital.name,
       });
     }
-
-    const newAppointment = new Appointment({
-      patient: patientId,
-      doctor: doctorId,
-      hospital: hospitalId,
-      date: new Date(date),
-    });
-
-    // console.log(date);
-    // console.log(todayDate.toISOString().split("T")[0]);
-    const result = await newAppointment.save();
-
-    //saving appointments into doctor and patients:
-    doctor.appointments.push(result._id);
-    patient.appointments.push(result._id);
-    await patient.save();
-    await doctor.save();
-
-    res.json({ type: "success", message: "Appointment booked successfully!" });
-    await sendEmail({
-      to: patient.email,
-      subject: "Appointment Status Update",
-      html: emailMessage,
-      hospitalName: hospital.name,
-    });
   } catch (err) {
     res.status(500).json({ message: "server error" });
     console.log("Error during booking appointment: ", err);
