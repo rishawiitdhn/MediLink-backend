@@ -51,7 +51,7 @@ module.exports.getAllAppointments = async (req, res) => {
 
     let todayDate = new Date();
     
-    const todayAppointments = appointments.filter((appt) => todayDate.toLocaleDateString("en-CA") === appt.date.toLocaleDateString("en-CA"));
+    const todayAppointments = appointments.filter((appt) => todayDate.toLocaleDateString("en-CA").split(",")[0] === appt.date.toLocaleDateString("en-CA").split(",")[0]);
     res.json(todayAppointments);
     console.log(todayAppointments)
   } catch(err) {
