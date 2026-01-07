@@ -49,11 +49,14 @@ module.exports.getAllVerifiedDoctors = async (req, res) => {
 module.exports.getAllAppointments = async (req, res) => {
   const { doctorId } = req.params;
   try {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    const selected = new Date(date);
 
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
+// IST-safe day range
+  const startOfDay = new Date(selected);
+  startOfDay.setUTCHours(18, 30, 0, 0);
+
+  const endOfDay = new Date(selected);
+  endOfDay.setUTCHours(18, 29, 59, 999);
     const appointments = await Appointment.find({
       doctor: doctorId,
       date: {

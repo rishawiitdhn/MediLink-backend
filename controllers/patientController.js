@@ -8,7 +8,7 @@ const sendEmail = require("../utils/sendEmailConfig");
 
 module.exports.bookAppointment = async (req, res) => {
   const { patientId, doctorId, hospitalId } = req.params;
-  const { date } = req.body;
+  const date = new Date(req.body.date);
   try {
     const patient = await Patient.findById(patientId);
     const doctor = await Doctor.findById(doctorId).populate("appointments");
