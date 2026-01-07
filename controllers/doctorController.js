@@ -49,14 +49,13 @@ module.exports.getAllVerifiedDoctors = async (req, res) => {
 module.exports.getAllAppointments = async (req, res) => {
   const { doctorId } = req.params;
   try {
-    const selected = new Date(date);
+    const todayDate = new Date();
 
-// IST-safe day range
-  const startOfDay = new Date(selected);
-  startOfDay.setUTCHours(18, 30, 0, 0);
+  const startOfDay = new Date(todayDate);
+  startOfDay.setHours(0, 0, 0, 0);
 
-  const endOfDay = new Date(selected);
-  endOfDay.setUTCHours(18, 29, 59, 999);
+  const endOfDay = new Date(todayDate);
+  endOfDay.setHours(23, 59, 59, 999);
     const appointments = await Appointment.find({
       doctor: doctorId,
       date: {
@@ -66,7 +65,6 @@ module.exports.getAllAppointments = async (req, res) => {
     }).populate("patient");
 
     res.json(appointments);
-    console.log(appointments);
   } catch (err) {
     res.status(500).json({ message: "Server Error" });
     console.error("Error during fetching doctor appointments: ", err);
@@ -149,21 +147,22 @@ module.exports.uploadMedicalReports = async (req, res) => {
 module.exports.markCompletedAppointment = async (req, res) => {
   const { patientId, doctorId } = req.body;
   try {
-    const todayDate = new Date();
-    const appointments = await Appointment.find({
+    const start = new Date();
+    start.setHours(0,0,0,0);
+    
+    const end = new Date();
+    end.setHours(0,0,0,0);
+
+    const appointment = await Appointment.findOne({
       doctor: doctorId,
       patient: patientId,
+      date: {$gte: start, $lte: end},
     });
-    if (!appointments)
+    if (!appointment)
       return res.status(404).json({ message: "Appointment not found" });
 
-    const appointment = appointments.filter(
-      (appt) =>
-        todayDate.toLocaleDateString("en-CA").split("T")[0] ===
-        appt.date.toISOString().split("T")[0]
-    );
-    appointment[0].isDone = true;
-    await appointment[0].save();
+    appointment.isDone = true;
+    await appointment.save();
     res.json({ message: "Appointment completed!!" });
     // res.json(appointment);
   } catch (err) {

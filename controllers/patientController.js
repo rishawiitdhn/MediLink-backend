@@ -9,6 +9,7 @@ const sendEmail = require("../utils/sendEmailConfig");
 module.exports.bookAppointment = async (req, res) => {
   const { patientId, doctorId, hospitalId } = req.params;
   const date = new Date(req.body.date);
+  date.setHours(0, 0, 0, 0);
   try {
     const patient = await Patient.findById(patientId);
     const doctor = await Doctor.findById(doctorId).populate("appointments");
@@ -17,10 +18,16 @@ module.exports.bookAppointment = async (req, res) => {
       return res.status(404).json({ message: "Can't take the appointment!" });
     }
 
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+
     const existing = await Appointment.findOne({
       patient: patientId,
       doctor: doctorId,
-      date,
+      date: { $gte: start, $lte: end },
       isDone: false,
     });
 
@@ -49,21 +56,19 @@ module.exports.bookAppointment = async (req, res) => {
       });
     } else {
       const todayDate = new Date();
-      if (
-        new Date(date).toLocaleDateString("en-CA").split("T")[0] <
-        todayDate.toLocaleDateString("en-CA").split("T")[0]
-      ) {
+      todayDate.setHours(0,0,0,0);
+      if (date<todayDate) {
         return res.json({ type: "info", message: "Try upcoming dates!!" });
       }
-      const todayAppointments = doctor.appointments.filter((appt) => {
-        return (
-          appt.date.toLocaleDateString("en-CA").split("T")[0] ===
-          new Date(date).toLocaleDateString("en-CA").split("T")[0]
-        );
+
+
+      const todayAppointmentsCount = await Appointment.countDocuments({
+        doctor: doctorId,
+        date: { $gte: start, $lte: end },
       });
 
       //checking the maximum limit of appointment per day!!
-      if (todayAppointments.length >= 50) {
+      if (todayAppointmentsCount >= 50) {
         return res.json({
           type: "info",
           message:
@@ -75,11 +80,9 @@ module.exports.bookAppointment = async (req, res) => {
         patient: patientId,
         doctor: doctorId,
         hospital: hospitalId,
-        date: new Date(date),
+        date,
       });
 
-      // console.log(date);
-      // console.log(todayDate.toISOString().split("T")[0]);
       const result = await newAppointment.save();
 
       //saving appointments into doctor and patients:
@@ -88,6 +91,7 @@ module.exports.bookAppointment = async (req, res) => {
       await patient.save();
       await doctor.save();
 
+      console.log(result);
       res.json({
         type: "success",
         message: "Appointment booked successfully!",
@@ -123,9 +127,10 @@ module.exports.getAllAppointments = async (req, res) => {
       .populate("hospital")
       .populate("doctor");
 
-    const todayDate = new Date().toLocaleDateString("en-CA");
+    const todayDate = new Date();
+    todayDate.setHours(0,0,0,0);
     const upcomingAppointments = appointments.filter(
-      (appt) => appt.date.toLocaleDateString("en-CA") >= todayDate
+      (appt) => appt.date >= todayDate
     );
 
     const patient = await Patient.findById(patientId);
